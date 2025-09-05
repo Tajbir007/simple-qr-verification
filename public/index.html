@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Verification</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #10B981;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div id="app" class="w-full max-w-lg bg-white rounded-2xl shadow-xl p-8 flex flex-col items-center text-center">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Ticket Verification</h1>
+        <p class="text-gray-500 mb-8">Scanning your QR code for validation.</p>
+
+        <!-- Loading state -->
+        <div id="loading" class="flex flex-col items-center">
+            <div class="spinner mb-4"></div>
+            <p class="text-lg text-gray-600 font-medium">Verifying...</p>
+        </div>
+
+        <!-- Result container (initially hidden) -->
+        <div id="result-container" class="hidden w-full flex flex-col items-center">
+            <!-- Dynamic content will be injected here -->
+        </div>
+    </div>
+
+    <script>
+        // Function to create and display a result block
+        function renderResult(isAuthentic, data = null) {
+            const resultContainer = document.getElementById('result-container');
+            resultContainer.innerHTML = '';
+            resultContainer.classList.remove('hidden');
+            document.getElementById('loading').classList.add('hidden');
+
+            const statusClass = isAuthentic ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600';
+            const iconSvg = isAuthentic ?
+                `<svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>` :
+                `<svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.71 13.29a1 1 0 01-1.42 1.42L12 13.41l-2.29 2.29a1 1 0 01-1.42-1.42L10.59 12l-2.29-2.29a1 1 0 011.42-1.42L12 10.59l2.29-2.29a1 1 0 011.42 1.42L13.41 12l2.29 2.29z"/></svg>`;
+
+            const statusText = isAuthentic ? 'Authentic' : 'Not Authentic';
+
+            let detailsHtml = '';
+            if (isAuthentic && data) {
+                detailsHtml = `
+                    <div class="mt-6 w-full text-left">
+                        <p class="text-xl font-semibold text-gray-700">Ticket Holder Details</p>
+                        <div class="mt-4 space-y-2 text-gray-600">
+                            <p class="text-lg"><strong>Name:</strong> ${data.name}</p>
+                            <p class="text-lg"><strong>Email:</strong> ${data.email}</p>
+                            <p class="text-lg"><strong>Phone:</strong> ${data.phone}</p>
+                        </div>
+                    </div>
+                `;
+            } else if (!isAuthentic) {
+                detailsHtml = `
+                    <p class="mt-4 text-gray-500 font-medium text-lg">
+                        The ticket ID provided is not found in our records.
+                    </p>
+                `;
+            }
+
+            resultContainer.innerHTML = `
+                <div class="p-6 rounded-full ${statusClass} flex items-center justify-center mb-6">
+                    ${iconSvg}
+                </div>
+                <h2 class="text-4xl font-bold ${isAuthentic ? 'text-green-600' : 'text-red-600'} mb-2">
+                    ${statusText}
+                </h2>
+                ${detailsHtml}
+            `;
+        }
+
+        async function verifyTicket() {
+            try {
+                // Get ticket ID from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const ticketId = urlParams.get('id');
+
+                if (!ticketId) {
+                    throw new Error("No ticket ID found in URL. Please scan a valid QR code.");
+                }
+
+                const response = await fetch(`/api/verify/${ticketId}`);
+                const result = await response.json();
+
+                if (response.ok && result.authentic) {
+                    renderResult(true, result.data);
+                } else {
+                    renderResult(false);
+                }
+
+            } catch (error) {
+                console.error("Verification failed:", error);
+                const resultContainer = document.getElementById('result-container');
+                resultContainer.classList.remove('hidden');
+                document.getElementById('loading').classList.add('hidden');
+                resultContainer.innerHTML = `
+                    <div class="p-6 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+                    </div>
+                    <h2 class="text-4xl font-bold text-yellow-600 mb-2">Error</h2>
+                    <p class="mt-4 text-gray-500 font-medium text-lg text-center">
+                        An error occurred during verification. Please check the console for details.
+                    </p>
+                `;
+            }
+        }
+
+        // Run the verification process when the page loads
+        document.addEventListener('DOMContentLoaded', verifyTicket);
+
+    </script>
+</body>
+
+</html>

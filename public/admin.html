@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Generation Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #10B981;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div id="app" class="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-8">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Ticket Generation Dashboard</h1>
+            <p class="text-gray-500 mt-2">Enter the details for each ticket holder below. QR codes will be generated
+                instantly.</p>
+        </div>
+
+        <!-- Dynamic form inputs -->
+        <form id="tickets-form" class="space-y-6">
+            <div id="tickets-container" class="space-y-4">
+                <!-- Initial ticket form field -->
+                <div class="ticket-input-group p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-lg font-semibold text-gray-700">Ticket #1</h3>
+                        <button type="button"
+                            class="remove-ticket-btn text-red-500 hover:text-red-700 transition-colors hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20"
+                                fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="space-y-3">
+                        <input type="text" name="name" placeholder="Full Name" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+                        <input type="email" name="email" placeholder="Email Address" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+                        <input type="number" name="phone" placeholder="Phone Number" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form buttons -->
+            <div class="flex justify-between items-center mt-6">
+                <button type="button" id="add-more-btn"
+                    class="px-4 py-2 rounded-lg text-green-600 border border-green-600 hover:bg-green-50 transition-colors font-medium flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20"
+                        fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    Add More
+                </button>
+                <button type="submit" id="generate-btn"
+                    class="px-6 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors font-medium">
+                    Generate Tickets
+                </button>
+            </div>
+        </form>
+
+        <!-- Dynamic message and QR codes display -->
+        <div id="results-container" class="mt-8 hidden">
+            <div id="loading" class="flex flex-col items-center justify-center p-8 hidden">
+                <div class="spinner mb-4"></div>
+                <p class="text-lg text-gray-600 font-medium">Generating tickets...</p>
+            </div>
+
+            <div id="success-message" class="text-center p-6 bg-green-50 text-green-700 rounded-lg hidden">
+                <h2 class="text-2xl font-bold mb-2">Success!</h2>
+                <p>Tickets have been generated successfully!</p>
+            </div>
+
+            <div id="error-message" class="text-center p-6 bg-red-50 text-red-700 rounded-lg hidden">
+                <h2 class="text-2xl font-bold mb-2">Error</h2>
+                <p id="error-text">An unexpected error occurred. Please try again.</p>
+            </div>
+
+            <!-- Container for displaying generated QR codes -->
+            <div id="qr-codes-display" class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+                <!-- QR codes will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('tickets-form');
+            const ticketsContainer = document.getElementById('tickets-container');
+            const addMoreBtn = document.getElementById('add-more-btn');
+            const generateBtn = document.getElementById('generate-btn');
+            const resultsContainer = document.getElementById('results-container');
+            const loading = document.getElementById('loading');
+            const successMessage = document.getElementById('success-message');
+            const errorMessage = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            const qrCodesDisplay = document.getElementById('qr-codes-display');
+
+            let ticketCount = 1;
+
+            // Function to display an error message
+            function displayError(message) {
+                resultsContainer.classList.remove('hidden');
+                errorMessage.classList.remove('hidden');
+                errorText.textContent = message;
+                loading.classList.add('hidden');
+                generateBtn.disabled = false;
+            }
+
+            // Function to add a new ticket input group
+            const addTicketInput = () => {
+                ticketCount++;
+                const newTicketGroup = document.createElement('div');
+                newTicketGroup.className = 'ticket-input-group p-4 bg-gray-50 rounded-lg border border-gray-200';
+                newTicketGroup.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-lg font-semibold text-gray-700">Ticket #${ticketCount}</h3>
+                        <button type="button" class="remove-ticket-btn text-red-500 hover:text-red-700 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="space-y-3">
+                        <input type="text" name="name" placeholder="Full Name" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+                        <input type="email" name="email" placeholder="Email Address" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+                    <input type="number" name="phone" placeholder="Phone Number" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+                    </div>
+                `;
+                ticketsContainer.appendChild(newTicketGroup);
+                updateRemoveButtons();
+            };
+
+            // Function to update the visibility of remove buttons
+            const updateRemoveButtons = () => {
+                const removeButtons = document.querySelectorAll('.remove-ticket-btn');
+                removeButtons.forEach((btn, index) => {
+                    btn.classList.toggle('hidden', removeButtons.length === 1);
+                });
+            };
+
+            // Event listeners
+            addMoreBtn.addEventListener('click', addTicketInput);
+
+            ticketsContainer.addEventListener('click', (e) => {
+                if (e.target.closest('.remove-ticket-btn')) {
+                    e.target.closest('.ticket-input-group').remove();
+                    document.querySelectorAll('.ticket-input-group').forEach((group, index) => {
+                        group.querySelector('h3').textContent = `Ticket #${index + 1}`;
+                    });
+                    ticketCount = document.querySelectorAll('.ticket-input-group').length;
+                    updateRemoveButtons();
+                }
+            });
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                qrCodesDisplay.innerHTML = '';
+                errorMessage.classList.add('hidden');
+                successMessage.classList.add('hidden');
+                resultsContainer.classList.remove('hidden');
+                loading.classList.remove('hidden');
+                generateBtn.disabled = true;
+
+                const ticketHolders = [];
+                const ticketInputs = document.querySelectorAll('.ticket-input-group');
+                ticketInputs.forEach(group => {
+                    const nameInput = group.querySelector('input[name="name"]');
+                    const emailInput = group.querySelector('input[name="email"]');
+                    const phoneInput = group.querySelector('input[name="phone"]');
+                    if (nameInput.value && emailInput.value) {
+                        ticketHolders.push({
+                            name: nameInput.value,
+                            email: emailInput.value,
+                            phone: phoneInput.value
+                        });
+                    }
+                });
+
+                if (ticketHolders.length === 0) {
+                    loading.classList.add('hidden');
+                    errorMessage.classList.remove('hidden');
+                    errorText.textContent = "Please enter at least one ticket holder's details.";
+                    generateBtn.disabled = false;
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/generate-tickets', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ ticketHolders })
+                    });
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        loading.classList.add('hidden');
+                        successMessage.classList.remove('hidden');
+
+                        data.tickets.forEach(ticket => {
+                            const qrCodeContainer = document.createElement('div');
+                            qrCodeContainer.className = 'flex flex-col items-center';
+
+                            const qrCodeDiv = document.createElement('div');
+                            qrCodeDiv.id = `qrcode-${ticket.id}`;
+                            qrCodeDiv.className = 'w-48 h-48 rounded-lg overflow-hidden shadow-md bg-white p-2';
+
+                            const qrCodeName = document.createElement('p');
+                            qrCodeName.textContent = ticket.name;
+                            qrCodeName.className = 'text-center mt-2 text-gray-700 font-medium';
+
+                            const qrCodeLink = document.createElement('a');
+                            qrCodeLink.href = `index.html?id=${ticket.id}`;
+                            qrCodeLink.target = '_blank';
+                            qrCodeLink.className = 'block hover:scale-105 transition-transform';
+                            qrCodeLink.title = `Click to verify ${ticket.name}'s ticket`;
+
+                            qrCodeLink.appendChild(qrCodeDiv);
+                            qrCodeContainer.appendChild(qrCodeLink);
+                            qrCodeContainer.appendChild(qrCodeName);
+
+                            qrCodesDisplay.appendChild(qrCodeContainer);
+
+                            const verificationUrl = `${window.location.protocol}//${window.location.host}/index.html?id=${ticket.id}`;
+                            new QRCode(qrCodeDiv, {
+                                text: verificationUrl,
+                                width: 192,
+                                height: 192,
+                                colorDark: "#000000",
+                                colorLight: "#ffffff",
+                                correctLevel: QRCode.CorrectLevel.H
+                            });
+                        });
+                    } else {
+                        displayError(data.error || 'An unexpected error occurred during ticket generation.');
+                    }
+
+                } catch (error) {
+                    displayError('Failed to connect to the server. Please ensure the API is running.');
+                    console.error('Fetch error:', error);
+                } finally {
+                    generateBtn.disabled = false;
+                }
+            });
+
+            // Initial setup
+            updateRemoveButtons();
+        });
+    </script>
+</body>
+
+</html>
