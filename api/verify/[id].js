@@ -1,4 +1,4 @@
-import { connectDB } from "../_db";
+import { connectDB } from "../_db.js";
 
 export default async function handler(req, res) {
   const { id } = req.query;
