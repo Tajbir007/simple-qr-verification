@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { connectDB } from "./_db";
+import { connectDB } from "./_db.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
