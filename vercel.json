@@ -1,7 +1,11 @@
 {
   "version": 2,
-  "rewrites": [
-    { "source": "/", "destination": "/admin.html" },
-    { "source": "/verify", "destination": "/index.html" }
+  "builds": [
+    { "src": "api/verification.js", "use": "@vercel/node" },
+    { "src": "public/**/*", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/verification.js" },
+    { "src": "/(.*)", "dest": "/public/$1" }
   ]
 }

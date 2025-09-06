@@ -55,21 +55,42 @@
 
     <script>
         // Function to create and display a result block
-        function renderResult(isAuthentic, data = null) {
+        function renderResult(status, data = null) {
             const resultContainer = document.getElementById('result-container');
             resultContainer.innerHTML = '';
             resultContainer.classList.remove('hidden');
             document.getElementById('loading').classList.add('hidden');
 
-            const statusClass = isAuthentic ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600';
-            const iconSvg = isAuthentic ?
-                `<svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>` :
-                `<svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.71 13.29a1 1 0 01-1.42 1.42L12 13.41l-2.29 2.29a1 1 0 01-1.42-1.42L10.59 12l-2.29-2.29a1 1 0 011.42-1.42L12 10.59l2.29-2.29a1 1 0 011.42 1.42L13.41 12l2.29 2.29z"/></svg>`;
+            let statusText;
+            let statusColorClass;
+            let iconSvg;
 
-            const statusText = isAuthentic ? 'Authentic' : 'Not Authentic';
+            switch (status) {
+                case 'authentic':
+                    statusText = 'Authentic';
+                    statusColorClass = 'bg-green-100 text-green-600';
+                    iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
+                    break;
+                case 'used':
+                    statusText = 'Already Used';
+                    statusColorClass = 'bg-yellow-100 text-yellow-600';
+                    iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-2h2v2h-2zm0-4h2V7h-2v6z"/></svg>`;
+                    break;
+                case 'not-found':
+                    statusText = 'Not Authentic';
+                    statusColorClass = 'bg-red-100 text-red-600';
+                    iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.71 13.29a1 1 0 01-1.42 1.42L12 13.41l-2.29 2.29a1 1 0 01-1.42-1.42L10.59 12l-2.29-2.29a1 1 0 011.42-1.42L12 10.59l2.29-2.29a1 1 0 011.42 1.42L13.41 12l2.29 2.29z"/></svg>`;
+                    break;
+                default:
+                    // Default to an error state for unexpected status
+                    statusText = 'Error';
+                    statusColorClass = 'bg-yellow-100 text-yellow-600';
+                    iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>`;
+                    break;
+            }
 
             let detailsHtml = '';
-            if (isAuthentic && data) {
+            if (status === 'authentic' && data) {
                 detailsHtml = `
                     <div class="mt-6 w-full text-left">
                         <p class="text-xl font-semibold text-gray-700">Ticket Holder Details</p>
@@ -80,19 +101,26 @@
                         </div>
                     </div>
                 `;
-            } else if (!isAuthentic) {
+            } else if (status === 'not-found') {
                 detailsHtml = `
                     <p class="mt-4 text-gray-500 font-medium text-lg">
                         The ticket ID provided is not found in our records.
                     </p>
                 `;
+            } else if (status === 'used') {
+                detailsHtml = `
+                    <p class="mt-4 text-gray-500 font-medium text-lg">
+                        This ticket has already been used and is no longer valid.
+                    </p>
+                `;
             }
 
+
             resultContainer.innerHTML = `
-                <div class="p-6 rounded-full ${statusClass} flex items-center justify-center mb-6">
+                <div class="p-6 rounded-full ${statusColorClass} flex items-center justify-center mb-6">
                     ${iconSvg}
                 </div>
-                <h2 class="text-4xl font-bold ${isAuthentic ? 'text-green-600' : 'text-red-600'} mb-2">
+                <h2 class="text-4xl font-bold ${status === 'authentic' ? 'text-green-600' : 'text-red-600'} mb-2">
                     ${statusText}
                 </h2>
                 ${detailsHtml}
@@ -112,10 +140,10 @@
                 const response = await fetch(`/api/verify/${ticketId}`);
                 const result = await response.json();
 
-                if (response.ok && result.authentic) {
-                    renderResult(true, result.data);
+                if (response.ok) {
+                    renderResult(result.status, result.data);
                 } else {
-                    renderResult(false);
+                    renderResult('not-found');
                 }
 
             } catch (error) {
