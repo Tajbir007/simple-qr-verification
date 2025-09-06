@@ -1,429 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ticket Generation Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #10B981;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        #qr-codes-display img {
-            max-width: 100%;
-            height: auto;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-
-    <div id="app" class="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-8 space-y-8">
-        <!-- Message Box -->
-        <div id="message-box" class="hidden fixed top-4 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-50 transition-all duration-300 transform scale-95 opacity-0">
-            <p id="message-text" class="text-sm font-medium"></p>
-        </div>
-        
-        <!-- Logout Button -->
-        <div class="absolute top-4 right-4">
-            <button id="logout-btn" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 transition-all duration-200">Logout</button>
-        </div>
-
-        <div class="flex flex-col items-center space-y-4">
-            <h1 class="text-4xl font-extrabold text-gray-800">Ticket Dashboard</h1>
-            <p class="text-gray-500 font-medium text-lg">Generate and manage tickets</p>
-        </div>
-        
-        <!-- Live status indicator -->
-        <div class="flex items-center justify-center space-x-2">
-            <span class="relative flex h-3 w-3">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-            </span>
-            <p class="text-sm text-gray-500 font-medium">Live status updates every 5 seconds</p>
-        </div>
-
-        <!-- Ticket Generation Form -->
-        <div class="space-y-4">
-            <h2 class="text-2xl font-bold text-gray-700">Generate New Tickets</h2>
-            <div id="ticket-holders-container" class="space-y-4">
-                <!-- Dynamic input fields will be added here -->
-            </div>
-            <div class="flex justify-end space-x-2">
-                <button id="add-btn" class="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 transition-all duration-200">Add Ticket</button>
-                <button id="generate-btn" class="px-4 py-2 bg-emerald-500 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-opacity-75 transition-all duration-200">
-                    <span id="generate-text">Generate Tickets</span>
-                    <span id="generate-loading" class="hidden spinner"></span>
-                </button>
-            </div>
-        </div>
-
-        <!-- QR Codes Display -->
-        <div id="qr-codes-section" class="space-y-4">
-            <div class="flex items-center justify-between">
-                <h2 class="text-2xl font-bold text-gray-700">Generated Tickets</h2>
-                <div id="loading-spinner" class="spinner hidden"></div>
-            </div>
-            <div id="qr-codes-display" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                <!-- QR codes will be displayed here -->
-            </div>
-            <div id="error-message" class="hidden mt-4 p-4 rounded-lg text-red-700 bg-red-100 border border-red-200">
-                <p id="error-text" class="font-medium"></p>
-            </div>
-        </div>
-
-    </div>
-    
-    <script>
-        const API_BASE = window.location.origin;
-        document.addEventListener('DOMContentLoaded', () => {
-            const logoutButton = document.getElementById('logout-btn');
-            const appDiv = document.getElementById('app');
-            const addBtn = document.getElementById('add-btn');
-            const generateBtn = document.getElementById('generate-btn');
-            const ticketHoldersContainer = document.getElementById('ticket-holders-container');
-            const qrCodesDisplay = document.getElementById('qr-codes-display');
-            const loadingSpinner = document.getElementById('loading-spinner');
-            const errorMessage = document.getElementById('error-message');
-            const errorText = document.getElementById('error-text');
-
-            const messageBox = document.getElementById('message-box');
-            const messageText = document.getElementById('message-text');
-
-            const token = sessionStorage.getItem('authToken');
-            if (!token) {
-                window.location.href = '/login.html';
-                return;
-            }
-
-            // Function to show a temporary message
-            function showMessage(text, type = 'success') {
-                messageText.textContent = text;
-                messageBox.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'text-green-700', 'text-red-700');
-                if (type === 'success') {
-                    messageBox.classList.add('bg-green-100', 'text-green-700');
-                } else {
-                    messageBox.classList.add('bg-red-100', 'text-red-700');
-                }
-                messageBox.classList.remove('scale-95', 'opacity-0');
-                messageBox.classList.add('scale-100', 'opacity-100');
-                setTimeout(() => {
-                    messageBox.classList.remove('scale-100', 'opacity-100');
-                    messageBox.classList.add('scale-95', 'opacity-0');
-                    setTimeout(() => messageBox.classList.add('hidden'), 300);
-                }, 3000);
-            }
-            
-            // Fetch and display all tickets
-            async function fetchAllTickets() {
-                // Do not show spinner on live updates to avoid flicker
-                const isInitialLoad = qrCodesDisplay.innerHTML === '';
-                if (isInitialLoad) {
-                    loadingSpinner.classList.remove('hidden');
-                }
-                
-                try {
-                    const response = await fetch(`${API_BASE}/api/tickets`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
-                    const data = await response.json();
-                    if (response.ok) {
-                        // Only re-render if there's a change or it's the initial load
-                        const currentTicketIds = Array.from(qrCodesDisplay.querySelectorAll('[data-id]')).map(el => el.getAttribute('data-id')).sort();
-                        const newTicketIds = data.tickets.map(t => t.id).sort();
-                        if (JSON.stringify(currentTicketIds) !== JSON.stringify(newTicketIds)) {
-                             renderTickets(data.tickets);
-                        } else {
-                            // Update existing ticket statuses without a full re-render
-                            data.tickets.forEach(ticket => {
-                                const container = qrCodesDisplay.querySelector(`[data-id="${ticket.id}"]`);
-                                if (container) {
-                                    const statusIndicator = container.querySelector('.status-indicator');
-                                    const resetButton = container.querySelector('.reset-btn');
-                                    const deleteButton = container.querySelector('.delete-btn');
-
-                                    statusIndicator.textContent = ticket.status.toUpperCase();
-                                    statusIndicator.className = `status-indicator px-2 py-1 mt-2 rounded-full text-xs font-bold ${ticket.status === 'active' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`;
-                                    
-                                    resetButton.disabled = ticket.status === 'active';
-                                    resetButton.textContent = 'Reset'; // Ensure button text is correct
-                                    deleteButton.disabled = false; // Enable delete button
-                                }
-                            });
-                        }
-                        
-                    } else {
-                        errorMessage.classList.remove('hidden');
-                        errorText.textContent = data.message || 'Failed to fetch tickets.';
-                    }
-                } catch (error) {
-                    errorMessage.classList.remove('hidden');
-                    errorText.textContent = 'Failed to connect to the server.';
-                } finally {
-                    loadingSpinner.classList.add('hidden');
-                }
-            }
-
-            function renderTickets(tickets) {
-                qrCodesDisplay.innerHTML = ''; // Clear previous tickets
-                if (tickets.length === 0) {
-                    qrCodesDisplay.innerHTML = '<p class="col-span-full text-center text-gray-500 font-medium">No tickets generated yet.</p>';
-                    return;
-                }
-                tickets.forEach(ticket => {
-                    const qrCodeContainer = document.createElement('div');
-                    qrCodeContainer.className = 'flex flex-col items-center space-y-2 bg-gray-50 p-4 rounded-xl shadow-sm border border-gray-200';
-                    qrCodeContainer.setAttribute('data-id', ticket.id);
-
-                    const qrCodeDiv = document.createElement('div');
-                    qrCodeDiv.className = 'w-48 h-48 border border-gray-300 p-2 bg-white rounded-lg shadow-inner';
-
-                    const qrCodeLink = document.createElement('a');
-                    qrCodeLink.href = `/index.html?id=${ticket.id}`;
-                    qrCodeLink.target = '_blank';
-                    qrCodeLink.className = 'block hover:scale-105 transition-transform';
-                    qrCodeLink.title = `Click to verify ${ticket.name}'s ticket`;
-
-                    qrCodeLink.appendChild(qrCodeDiv);
-
-                    const ticketDetails = document.createElement('div');
-                    ticketDetails.className = 'flex flex-col items-center text-center';
-
-                    const qrCodeName = document.createElement('p');
-                    qrCodeName.textContent = ticket.name;
-                    qrCodeName.className = 'text-lg text-gray-800 font-semibold truncate w-full';
-
-                    const qrCodeEmail = document.createElement('p');
-                    qrCodeEmail.textContent = ticket.email;
-                    qrCodeEmail.className = 'text-sm text-gray-500 truncate w-full';
-
-                    const statusIndicator = document.createElement('div');
-                    statusIndicator.className = `status-indicator px-2 py-1 mt-2 rounded-full text-xs font-bold ${ticket.status === 'active' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`;
-                    statusIndicator.textContent = ticket.status.toUpperCase();
-
-                    ticketDetails.appendChild(qrCodeName);
-                    ticketDetails.appendChild(qrCodeEmail);
-                    ticketDetails.appendChild(statusIndicator);
-
-                    qrCodeContainer.appendChild(qrCodeLink);
-                    qrCodeContainer.appendChild(ticketDetails);
-                    
-                    // Reset Button
-                    const resetButton = document.createElement('button');
-                    resetButton.textContent = 'Reset';
-                    resetButton.className = 'reset-btn mt-2 px-4 py-1 text-sm bg-indigo-500 text-white font-semibold rounded-full shadow-md hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-75 transition-all duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed';
-                    if (ticket.status === 'active') {
-                        resetButton.disabled = true;
-                    }
-                    resetButton.addEventListener('click', async () => {
-                        const originalText = resetButton.textContent;
-                        resetButton.textContent = 'Resetting...';
-                        resetButton.disabled = true;
-
-                        try {
-                            const response = await fetch(`/api/reset-ticket/${ticket.id}`, {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${token}`
-                                }
-                            });
-                            const data = await response.json();
-                            if (response.ok) {
-                                showMessage(`Ticket for ${ticket.name} has been reset.`);
-                                // The status update will be handled by the live refresh
-                            } else {
-                                showMessage(data.message || 'Failed to reset ticket.', 'error');
-                                resetButton.textContent = originalText;
-                                resetButton.disabled = false;
-                            }
-                        } catch (error) {
-                            showMessage('Network error. Failed to reset ticket.', 'error');
-                            resetButton.textContent = originalText;
-                            resetButton.disabled = false;
-                        }
-                    });
-
-                    // Delete Button
-                    const deleteButton = document.createElement('button');
-                    deleteButton.textContent = 'Delete';
-                    deleteButton.className = 'delete-btn ml-2 mt-2 px-4 py-1 text-sm bg-red-500 text-white font-semibold rounded-full shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 transition-all duration-200';
-                    deleteButton.addEventListener('click', async () => {
-                        if (confirm(`Are you sure you want to delete the ticket for ${ticket.name}?`)) {
-                            const originalText = deleteButton.textContent;
-                            deleteButton.textContent = 'Deleting...';
-                            deleteButton.disabled = true;
-
-                            try {
-                                const response = await fetch(`${API_BASE}/api/delete-ticket/${ticket.id}`, {
-                                    method: 'DELETE',
-                                    headers: {
-                                        'Authorization': `Bearer ${token}`
-                                    }
-                                });
-                                const data = await response.json();
-                                if (response.ok) {
-                                    showMessage(`Ticket for ${ticket.name} has been deleted.`);
-                                    // The status update will be handled by the live refresh
-                                } else {
-                                    showMessage(data.message || 'Failed to delete ticket.', 'error');
-                                }
-                            } catch (error) {
-                                showMessage('Network error. Failed to delete ticket.', 'error');
-                                console.error('Delete fetch error:', error);
-                            } finally {
-                                deleteButton.textContent = originalText;
-                                deleteButton.disabled = false;
-                                fetchAllTickets(); // Force a refresh after delete attempt
-                            }
-                        }
-                    });
-
-                    const buttonGroup = document.createElement('div');
-                    buttonGroup.className = 'flex mt-2';
-                    buttonGroup.appendChild(resetButton);
-                    buttonGroup.appendChild(deleteButton);
-                    
-                    qrCodeContainer.appendChild(buttonGroup);
-
-                    qrCodesDisplay.appendChild(qrCodeContainer);
-
-                    const verificationUrl = `${window.location.protocol}//${window.location.host}/index.html?id=${ticket.id}`;
-                    new QRCode(qrCodeDiv, {
-                        text: verificationUrl,
-                        width: 192,
-                        height: 192,
-                        colorDark: "#000000",
-                        colorLight: "#ffffff",
-                        correctLevel: QRCode.CorrectLevel.H
-                    });
-                });
-            }
-
-            // Add new ticket holder input fields
-            function addTicketHolderField() {
-                const newTicketHolderDiv = document.createElement('div');
-                newTicketHolderDiv.className = 'flex items-end space-x-2';
-                newTicketHolderDiv.innerHTML = `
-                    <div class="flex-grow space-y-1">
-                        <label class="text-sm font-medium text-gray-700">Name</label>
-                        <input type="text" placeholder="Enter name" class="w-full px-4 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400" required>
-                    </div>
-                    <div class="flex-grow space-y-1">
-                        <label class="text-sm font-medium text-gray-700">Email</label>
-                        <input type="email" placeholder="Enter email" class="w-full px-4 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400" required>
-                    </div>
-                     <div class="flex-grow space-y-1">
-                        <label class="text-sm font-medium text-gray-700">Phone</label>
-                        <input type="tel" placeholder="Enter Phone Number" class="w-full px-4 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400" required>
-                    </div>
-                `;
-                ticketHoldersContainer.appendChild(newTicketHolderDiv);
-                updateRemoveButtons();
-            }
-
-            // Update the state of remove buttons
-            function updateRemoveButtons() {
-                const removeBtns = document.querySelectorAll('.remove-btn');
-                const isSingleField = removeBtns.length <= 1;
-                removeBtns.forEach(btn => btn.disabled = isSingleField);
-            }
-
-            // Event listener for adding ticket fields
-            addBtn.addEventListener('click', addTicketHolderField);
-
-            // Event listener for removing ticket fields
-            ticketHoldersContainer.addEventListener('click', (e) => {
-                if (e.target.classList.contains('remove-btn')) {
-                    e.target.closest('.flex').remove();
-                    updateRemoveButtons();
-                }
-            });
-
-            // Event listener for generating tickets
-            generateBtn.addEventListener('click', async () => {
-                const ticketHolders = Array.from(ticketHoldersContainer.children).map(div => {
-                    return {
-                        name: div.querySelector('input[type="text"]').value,
-                        email: div.querySelector('input[type="email"]').value,
-                        phone: div.querySelector('input[type="tel"]').value
-                    };
-                }).filter(holder => holder.name && holder.email && holder.phone);
-
-                if (ticketHolders.length === 0) {
-                    showMessage('Please enter at least one name,email,phone.', 'error');
-                    return;
-                }
-
-                generateBtn.disabled = true;
-                loadingSpinner.classList.remove('hidden');
-                qrCodesDisplay.innerHTML = '';
-                errorMessage.classList.add('hidden');
-
-                try {
-                    const response = await fetch(`${API_BASE}/api/generate-tickets`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ ticketHolders })
-                    });
-                    const data = await response.json();
-                    if (response.ok) {
-                        showMessage('Tickets generated successfully!');
-                        // Re-fetch all tickets to show the newly generated ones
-                        fetchAllTickets();
-                    } else {
-                        showMessage(data.error || 'An unexpected error occurred.', 'error');
-                    }
-                } catch (error) {
-                    showMessage('Failed to connect to the server.', 'error');
-                    console.error('Fetch error:', error);
-                } finally {
-                    loadingSpinner.classList.add('hidden');
-                    generateBtn.disabled = false;
-                }
-            });
-
-            // Initial setup
-            addTicketHolderField();
-            fetchAllTickets();
-
-             //Set up a periodic refresh to get the latest status
-            setInterval(fetchAllTickets, 5000); // Poll every 5 seconds
-
-            logoutButton.addEventListener('click', () => {
-                sessionStorage.removeItem('authToken');
-                window.location.href = '/login.html';
-            });
-     });
-    </script>
+<body class="bg-gray-100 min-h-screen p-4">
+  <div id="app" class="bg-white rounded p-6 max-w-2xl mx-auto shadow">
+    <h1 class="text-2xl font-bold mb-4">Ticket Dashboard</h1>
+    <button id="logout-btn" class="mb-4 bg-red-500 text-white px-3 py-1 rounded">Logout</button>
+    <div id="ticket-holders-container"></div>
+    <button id="add-btn" class="bg-blue-500 text-white px-3 py-1 rounded">Add Ticket</button>
+    <button id="generate-btn" class="bg-green-500 text-white px-3 py-1 rounded">Generate</button>
+    <div id="qr-codes-display" class="grid grid-cols-2 gap-4 mt-4"></div>
+  </div>
+<script>
+const API_BASE = window.location.origin;
+const token = sessionStorage.getItem('authToken');
+if (!token) window.location.href = '/login.html';
+document.getElementById('logout-btn').addEventListener('click', ()=>{
+  sessionStorage.removeItem('authToken');
+  window.location.href = '/login.html';
+});
+async function fetchAllTickets() {
+  try {
+    const res = await fetch(`${API_BASE}/api/tickets`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      const container = document.getElementById('qr-codes-display');
+      container.innerHTML = '';
+      data.tickets.forEach(t=>{
+        const div = document.createElement('div');
+        div.className = 'p-2 border rounded';
+        div.innerHTML = `<p>${t.name}</p><p>${t.email}</p><p>Status: ${t.status}</p>
+          <button onclick="resetTicket('${t.id}')">Reset</button>
+          <button onclick="deleteTicket('${t.id}')">Delete</button>`;
+        container.appendChild(div);
+      });
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+async function resetTicket(id) {
+  await fetch(`${API_BASE}/api/reset-ticket/${id}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+  fetchAllTickets();
+}
+async function deleteTicket(id) {
+  await fetch(`${API_BASE}/api/delete-ticket/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+  fetchAllTickets();
+}
+document.getElementById('add-btn').addEventListener('click', ()=>{
+  const container = document.getElementById('ticket-holders-container');
+  const div = document.createElement('div');
+  div.innerHTML = '<input type="text" placeholder="Name"> <input type="email" placeholder="Email"> <input type="tel" placeholder="Phone">';
+  container.appendChild(div);
+});
+document.getElementById('generate-btn').addEventListener('click', async ()=>{
+  const holders = Array.from(document.querySelectorAll('#ticket-holders-container div')).map(div=>({
+    name: div.querySelector('input[type=text]').value,
+    email: div.querySelector('input[type=email]').value,
+    phone: div.querySelector('input[type=tel]').value
+  }));
+  await fetch(`${API_BASE}/api/generate-tickets`, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json','Authorization':`Bearer ${token}` },
+    body: JSON.stringify({ ticketHolders: holders })
+  });
+  fetchAllTickets();
+});
+fetchAllTickets();
+</script>
 </body>
-
 </html>
