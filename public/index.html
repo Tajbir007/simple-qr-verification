@@ -137,7 +137,8 @@
                     throw new Error("No ticket ID found in URL. Please scan a valid QR code.");
                 }
 
-                const response = await fetch(`/api/verify/${ticketId}`);
+                const API_BASE = window.location.origin;
+                const response = await fetch(`${API_BASE}/api/verify/${ticketId}`);
                 const result = await response.json();
 
                 if (response.ok) {
