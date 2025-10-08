@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .login-card {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2.5rem;
+        }
+
+        .btn {
+            background-color: #10B981;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.3s;
+        }
+
+        .btn:hover {
+            background-color: #059669;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="login-card w-full max-w-md">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Admin Login</h1>
+            <p class="text-gray-500 mt-2">Enter your credentials to access the dashboard.</p>
+        </div>
+        <form id="login-form" class="space-y-4">
+            <div>
+                <label for="username" class="block text-gray-700 font-medium mb-1">Username</label>
+                <input type="text" id="username" name="username" required
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+            </div>
+            <div>
+                <label for="password" class="block text-gray-700 font-medium mb-1">Password</label>
+                <input type="password" id="password" name="password" required
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+            </div>
+            <button type="submit" class="btn w-full font-semibold">Login</button>
+        </form>
+        <div id="message" class="mt-4 p-3 text-center text-red-600 bg-red-100 rounded-lg hidden"></div>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    sessionStorage.setItem('authToken', data.token);
+                    window.location.href = '/admin.html';
+                } else {
+                    messageDiv.textContent = data.message || 'Login failed. Please check your credentials.';
+                    messageDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                messageDiv.textContent = 'Failed to connect to the server. Please ensure the API is running.';
+                messageDiv.classList.remove('hidden');
+                console.error('Login error:', error);
+            }
+        });
+    </script>
+</body>
+
+</html>
