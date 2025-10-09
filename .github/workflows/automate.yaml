@@ -1,0 +1,40 @@
+name: Ping Cycle (10 min on, 15 min off every hour)
+
+on:
+  schedule:
+    - cron: '*/1 * * * *'  # Runs every minute
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  ping-app:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Ping Cycle
+        run: |
+          # Get the current minute
+          current_time=$(date +%M)
+          current_time=$((10#$current_time))  # Convert to integer
+
+          # URLs to ping
+          urls=(
+            "https://qr-code-verify.onrender.com/"
+          )
+
+          # Define cycle length (23 minutes)
+          cycle_length=25
+          cycle_period=$((current_time % cycle_length))  # Calculate current cycle period
+
+          # 10 minutes of "on" period (pinging)
+          if [ $cycle_period -lt 10 ]; then
+            echo "Pinging for 10 minutes..."
+            for url in "${urls[@]}"
+            do
+              echo "Pinging $url..."
+              curl -s $url > /dev/null
+            done
+          else
+            # 15 minutes of "off" period (sleeping)
+            echo "Sleeping for 15 minutes..."
+            sleep 60  # Sleep for 1 minute (GitHub Actions runs every minute)
+          fi
