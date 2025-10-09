@@ -30,7 +30,7 @@ jobs:
             echo "Pinging for 10 minutes..."
             for url in "${urls[@]}"
             do
-              echo "Pinging $url..."
+              echo "Pinging $url"
               curl -s $url > /dev/null
             done
           else
