@@ -138,11 +138,12 @@ Log in with your admin credentials.
 ---
 
 ## 🧑‍💻 Author
-**Your Name**  
+**Tajbir Prottoy**  
 💼 [GitHub](https://github.com/Tajbir007)
 
 ---
 
 ## 📄 License
 This project is licensed under the **MIT License** — free for personal and commercial use.
+
 
