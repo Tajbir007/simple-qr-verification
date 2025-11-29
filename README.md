@@ -5,6 +5,12 @@ Built with **Node.js**, **Express**, **MongoDB**, and a **TailwindCSS** frontend
 
 ---
 
+## 💻 Demo Site
+- Demo Link: https://qr-code-verify.onrender.com/
+- Credentials:
+  Username: DemoUser
+  Password: Demo@1234
+
 ## 🚀 Features
 
 ### 🎫 Ticket Management
@@ -88,10 +94,6 @@ Visit:
 ```
 http://localhost:3000/login.html
 ```
-Demo login:
-Username: DemoUser
-Password: Demo@1234
-
 Log in with your admin credentials.  
 (You can manually create an admin user in MongoDB.)
 
@@ -145,5 +147,6 @@ Log in with your admin credentials.
 
 ## 📄 License
 This project is licensed under the **MIT License** — free for personal and commercial use.
+
 
 
