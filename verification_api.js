@@ -50,6 +50,20 @@ const Admin = mongoose.model('Admin', adminSchema);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ----- Friendly URL routes -----
+app.get('/login', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/index', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/admin', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+
 // ----- authentication middleware -----
 const authenticateToken = (req, res, next) => {
     const token = req.headers['authorization']?.split(' ')[1];
