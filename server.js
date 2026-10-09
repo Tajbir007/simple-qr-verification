@@ -36,7 +36,12 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     phone: String,
     status: { type: String, default: 'active' }, // 'active' or 'used'
-    category: { type: String, required: true } // e.g., 'VIP', 'General', etc.
+    segments: { type: String, required: true }, // e.g., 'VIP', 'General', etc.
+    institute: String, // Name of the institute
+    group: { type: String, required: true }, // e.g., 'Junior', 'Senior', etc.
+    class: String,  // e.g., '1', '2', etc.
+    foodReceived: { type: Boolean, default: false }, // true when QR is scanned a 2nd time
+    isEnabled: { type: Boolean, default: true } // false when a ticket is deactivated
 });
 
 const User = mongoose.model('User', userSchema);
@@ -48,21 +53,20 @@ const Admin = mongoose.model('Admin', adminSchema);
 
 // middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
-// ----- Friendly URL routes -----
+// Serve pages without requiring the .html extension
 app.get('/login', (_req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
-app.get('/index', (_req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/admin', (_req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+app.get('/index', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ----- authentication middleware -----
 const authenticateToken = (req, res, next) => {
@@ -84,7 +88,7 @@ app.post('/api/login', async (req, res) => {
         if (!adminUser) {
             return res.status(401).json({ message: 'Invalid username or password.' });
         }
-        
+
         // Compare the plain text password with the hashed password in the database
         const isMatch = await bcrypt.compare(password, adminUser.password);
 
@@ -127,19 +131,33 @@ app.post('/api/generate-tickets', authenticateToken, async (req, res) => {
             email: holder.email,
             phone: holder.phone,
             status: 'active',
-            category: holder.category
+            segments: holder.segments,
+            group: holder.group,
+            institute: holder.institute,
+            class: holder.class,
+            foodReceived: false
         }));
 
         await User.insertMany(newTickets);
 
         res.status(200).json({
             message: 'Tickets generated successfully.',
-            tickets: newTickets.map(t => ({ id: t.id, name: t.name, email: t.email, phone: t.phone, status: t.status, category: t.category }))
+            tickets: newTickets.map(t => ({
+                id: t.id,
+                name: t.name,
+                email: t.email,
+                phone: t.phone,
+                status: t.status,
+                segments: t.segments,
+                group: t.group,
+                institute: t.institute,
+                class: t.class,
+                foodReceived: t.foodReceived }))
         });
 
     } catch (error) {
         console.error('Error during ticket generation:', error);
-        res.status(500).json({ error: 'An internal server error occurred during ticket generation.' });
+        res.status(500).json({ error: `Ticket generation failed: ${error.message}` });
     }
 });
 
@@ -149,7 +167,20 @@ app.post('/api/generate-tickets', authenticateToken, async (req, res) => {
 app.get('/api/tickets', authenticateToken, async (_req, res) => {
     try {
         const tickets = await User.find({}).sort({ name: 1 });
-        res.status(200).json({ tickets: tickets.map(t => ({ id: t.id, name: t.name, email: t.email, phone: t.phone, status: t.status, category: t.category })) });
+        res.status(200).json({
+            tickets: tickets.map(t => ({
+                id: t.id,
+                name: t.name,
+                email: t.email,
+                phone: t.phone,
+                status: t.status,
+                segments: t.segments,
+                institute: t.institute, // Check that this field is present
+                class: t.class, // Check that this field is present
+                group: t.group, // Check that this field is present
+                foodReceived: t.foodReceived,
+                isEnabled: t.isEnabled
+            })) });
     } catch (error) {
         console.error('Error fetching tickets:', error);
         res.status(500).json({ message: 'An internal server error occurred while fetching tickets.' });
@@ -169,8 +200,26 @@ app.get('/api/verify/:id', async (req, res) => {
             return res.status(404).json({ status: 'not-found', message: 'Ticket not found.' });
         }
 
+        if (!user.isEnabled) {
+            return res.status(403).json({
+                status: 'disabled',
+                message: 'This ticket is currently deactivated and cannot be verified.'
+            });
+        }
+
         if (user.status !== 'active') {
-            return res.status(200).json({ status: 'used', message: 'This ticket has already been used.' });
+            // 2nd scan — mark food as received
+            if (!user.foodReceived) {
+                user.foodReceived = true;
+                await user.save();
+            }
+            return res.status(200).json({
+                status: 'used',
+                foodReceived: user.foodReceived,
+                message: user.foodReceived
+                    ? 'This ticket has already been used. Food received ✓'
+                    : 'This ticket has already been used.'
+            });
         }
 
         // Valid ticket, update status to "used"
@@ -179,7 +228,7 @@ app.get('/api/verify/:id', async (req, res) => {
 
         return res.status(200).json({
             status: 'authentic',
-            data: { name: user.name, email: user.email, phone: user.phone, category: user.category }
+            data: { name: user.name, email: user.email, phone: user.phone, segments: user.segments, institute: user.institute, class: user.class, group: user.group }
         });
 
     } catch (error) {
@@ -200,17 +249,39 @@ app.post('/api/reset-ticket/:id', authenticateToken, async (req, res) => {
             return res.status(404).json({ message: 'Ticket not found.' });
         }
 
-        if (user.status === 'active') {
+        if (user.status === 'active' && user.isEnabled) {
             return res.status(400).json({ message: 'Ticket is already active.' });
         }
 
         user.status = 'active';
+        user.foodReceived = false;
+        user.isEnabled = true;
         await user.save();
 
         res.status(200).json({ message: 'Ticket has been reset and is now active again.' });
     } catch (error) {
         console.error('Error resetting ticket:', error);
         res.status(500).json({ message: 'An internal server error occurred while resetting the ticket.' });
+    }
+});
+// ----- Reset All Tickets API Endpoint -----
+// Method: POST
+// Route: /api/reset-all-tickets
+app.post('/api/reset-all-tickets', authenticateToken, async (_req, res) => {
+    try {
+        const result = await User.updateMany({}, {
+            status: 'active',
+            foodReceived: false,
+            isEnabled: true
+        });
+
+        res.status(200).json({
+            message: 'All tickets have been reset.',
+            updatedCount: result.modifiedCount
+        });
+    } catch (error) {
+        console.error('Error resetting all tickets:', error);
+        res.status(500).json({ message: 'An internal server error occurred while resetting all tickets.' });
     }
 });
 // ----- Delete Ticket API Endpoint -----

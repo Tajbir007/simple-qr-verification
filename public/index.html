@@ -76,6 +76,11 @@
                     statusColorClass = 'bg-yellow-100 text-yellow-600';
                     iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-2h2v2h-2zm0-4h2V7h-2v6z"/></svg>`;
                     break;
+                case 'disabled':
+                    statusText = 'Deactivated';
+                    statusColorClass = 'bg-gray-100 text-gray-700';
+                    iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.41 5.59L12 11.17l1.41-1.58a1 1 0 011.42 1.42L13.41 12l1.42 1.41a1 1 0 01-1.42 1.42L12 13.41l-1.41 1.42a1 1 0 01-1.42-1.42L10.59 12 9.17 10.59a1 1 0 011.42-1.42z"/></svg>`;
+                    break;
                 case 'not-found':
                     statusText = 'Not Authentic';
                     statusColorClass = 'bg-red-100 text-red-600';
@@ -98,7 +103,10 @@
             <p class="text-lg"><strong>Name:</strong> ${data.name}</p>
             <p class="text-lg"><strong>Email:</strong> ${data.email}</p>
             <p class="text-lg"><strong>Phone:</strong> ${data.phone}</p>
-            <p class="text-lg"><strong>Category:</strong> ${data.category}</p> <!-- NEW -->
+            <p class="text-lg"><strong>Segments:</strong> ${data.segments}</p> <!-- NEW -->
+            <p class="text-lg"><strong>Institute:</strong> ${data.institute}</p> <!-- NEW -->
+            <p class="text-lg"><strong>Group:</strong> ${data.group}</p> <!-- NEW -->
+            <p class="text-lg"><strong>Class:</strong> ${data.class}</p> <!-- NEW -->
         </div>
     </div>
 `;
@@ -144,7 +152,8 @@
                 if (response.ok) {
                     renderResult(result.status, result.data);
                 } else {
-                    renderResult('not-found');
+                    const body = await response.json().catch(() => ({}));
+                    renderResult(body.status || 'not-found');
                 }
 
             } catch (error) {
