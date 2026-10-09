@@ -56,36 +56,7 @@
         <div id="message" class="mt-4 p-3 text-center text-red-600 bg-red-100 rounded-lg hidden"></div>
     </div>
 
-    <script>
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const messageDiv = document.getElementById('message');
-
-            try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password }),
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    sessionStorage.setItem('authToken', data.token);
-                    window.location.href = '/admin.html';
-                } else {
-                    messageDiv.textContent = data.message || 'Login failed. Please check your credentials.';
-                    messageDiv.classList.remove('hidden');
-                }
-            } catch (error) {
-                messageDiv.textContent = 'Failed to connect to the server. Please ensure the API is running.';
-                messageDiv.classList.remove('hidden');
-                console.error('Login error:', error);
-            }
-        });
-    </script>
+    <script src="/login.js"></script>
 </body>
 
 </html>

@@ -1,15 +1,15 @@
 {
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
   "dependencies": {
-    "bcrypt": "^6.0.0",
-    "bcryptjs": "^3.0.2",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.2",
-    "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "mongodb": "^6.19.0",
-    "mongoose": "^8.18.1",
-    "mysql2": "^3.14.4",
-    "qrcode": "^1.5.4",
-    "uuid": "^11.1.0"
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "mongoose": "^8.24.5"
   }
 }

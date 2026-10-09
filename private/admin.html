@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Generation Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/qrcode.min.js" defer></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-width: 320px;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 80rem;
+            margin: 0 auto;
+        }
+
+        #qr-codes-display > [data-id] {
+            min-width: 0;
+        }
+
+        #qr-codes-display .ticket-details {
+            width: 100%;
+            min-width: 0;
+        }
+
+        #qr-codes-display .ticket-details p {
+            max-width: 100%;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #10B981;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #qr-codes-display img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex items-start justify-center p-3 sm:p-6">
+
+    <div id="app" class="relative bg-white rounded-2xl shadow-xl p-4 sm:p-8 space-y-8">
+        <!-- Message Box -->
+        <div id="message-box" class="hidden fixed top-4 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-50 transition-all duration-300 transform scale-95 opacity-0">
+            <p id="message-text" class="text-sm font-medium"></p>
+        </div>
+
+        <!-- Logout Button -->
+        <div class="absolute top-4 right-4">
+            <button id="logout-btn" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 transition-all duration-200">Logout</button>
+        </div>
+
+        <div class="flex flex-col items-center space-y-4">
+    <h1 class="text-4xl font-extrabold text-gray-800">Ticket Dashboard</h1>
+    <p class="text-gray-500 font-medium text-lg">Generate and manage tickets</p>
+</div>
+
+<!-- Search Bar -->
+<div class="relative w-full mb-4">
+    <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path class="w-5 h-5" stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m4 0v6m-10-10V5a1 1 0 011-1h3m-3 0h3a1 1 0 011 1v6m-10-10h2M19 7h1m-6 3h2m4 7a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <input type="text" id="search-input" placeholder="Search tickets..." class="pl-9 w-full px-4 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2" autocomplete="off">
+</div>
+
+<!-- Live status indicator -->
+<div class="flex items-center justify-center space-x-2">
+    <span class="relative flex h-3 w-3">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+    </span>
+    <p class="text-sm text-gray-500 font-medium">Live status updates every 5 seconds</p>
+</div>
+
+<!-- Ticket Generation Form -->
+        <div class="space-y-4">
+            <h2 class="text-2xl font-bold text-gray-700">Generate New Tickets</h2>
+            <div id="ticket-holders-container" class="space-y-4">
+                <!-- Dynamic input fields will be added here -->
+            </div>
+            <div class="flex flex-wrap justify-end gap-2">
+                <button id="add-btn" class="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 transition-all duration-200">Add Ticket</button>
+                <button id="generate-btn" class="px-4 py-2 bg-emerald-500 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-opacity-75 transition-all duration-200">
+                    <span id="generate-text">Generate Tickets</span>
+                    <span id="generate-loading" class="hidden spinner"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- QR Codes Display -->
+        <div id="qr-codes-section" class="space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-2xl font-bold text-gray-700">Generated Tickets</h2>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="reset-all-btn" class="px-4 py-2 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-opacity-75 transition-all duration-200">
+                        Reset All
+                    </button>
+                    <div id="loading-spinner" class="spinner hidden"></div>
+                </div>
+            </div>
+            <div id="qr-codes-display" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                <!-- QR codes will be displayed here -->
+            </div>
+            <div id="error-message" class="hidden mt-4 p-4 rounded-lg text-red-700 bg-red-100 border border-red-200">
+                <p id="error-text" class="font-medium"></p>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="/admin.js"></script>
+</body>
+</html>
