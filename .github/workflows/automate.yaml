@@ -5,6 +5,8 @@ on:
     - cron: '*/1 * * * *'  # Runs every minute
   workflow_dispatch:  # Manual trigger
 
+permissions: {}  # this job only runs curl; it needs no access to the repository
+
 jobs:
   ping-app:
     runs-on: ubuntu-latest
